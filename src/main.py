@@ -19,17 +19,24 @@ import sys
 #--------------------------------------------------
 
 #Color palette
-BLACK = "#0a0a0a"
-WHITE = "#cccccc"
-RED   = "#f08080"
-DGRAY = "#808080"
-GRAY  = "#b4b4b4"
-LGRAY = "#e3e3e3"
-GREEN = "#94d692"
+BLACK   = "#0a0a0a"
+WHITE   = "#cccccc"
+RED     = "#f08080"
+DGRAY   = "#808080"
+GRAY    = "#b4b4b4"
+LGRAY   = "#e3e3e3"
+GREEN   = "#94d692"
 TESTCLR = "#ff9900" # for debugging
 
 FILE_PATH = "timers.dat"
 DFILE_DELIM = '-'
+TIME_LEFT_DEFAULT = "--- | -- : --  "
+SEC_IN_DAY  = 86400
+SEC_IN_HOUR = 3600
+SEC_IN_MIN  = 60
+COLOR_SECTOR_LOW  = 24 # Less than (Hours)
+COLOR_SECTOR_CRIT = 1  # Less than (Hours)
+COLOR_SECTOR_OVER = 0  # Less than (Minutes)
 
 # Style
 font_1, font_1_size = "Arial\ Nova", " 12 "
@@ -37,14 +44,13 @@ font_2, font_2_size = "Arial", " 9 "
 pdx, pdy = 3, 3
 
 win_size: str = "" # Do not reassign directly
-# timer_selected :int = -1
 date_selected = ""
 timers_quantity = 0
 timers = []
 
 # Read CLI user arugment
-timers_to_add = 1
-if len(sys.argv) > 1:
+timers_to_add = 3
+if len(sys.argv) >= 1 and len(sys.argv) <= 10:
     timers_to_add = int(sys.argv[1])
 
 loaded_data: list = []
@@ -52,15 +58,6 @@ loaded_data: list = []
 #--------------------------------------------------
 # FUNCTIONS
 #--------------------------------------------------
-def handle_events(e):
-    if e.keysym == "Escape":  # NOTE:SHOULD BE COMMENTED OUT IN THE RELEASE VERSION!
-        print("exiting...")
-        sys.exit()
-
-    if e.keysym=="F1": 
-        save_data_file()
-
-
 def load_data_file():
     global loaded_data
     data_file = open(FILE_PATH, "rt")
@@ -84,7 +81,49 @@ def load_data_file():
 
 
 def calculate_deadline():
-    pass
+    # time_left: str
+    print("-----")
+    for n in range(len(timers)):
+        d = timers[n].widgets["date"].get_date()
+        h = timers[n].widgets["time_hrs"].get()
+        m = timers[n].widgets["time_min"].get()
+
+        # TODO: solve the bug occurring when because of empty fields
+        parsed_date = datetime.strptime(f"{d}-{h}-{m}", "%Y-%m-%d-%H-%M")
+        time_difference   = parsed_date - datetime.now()
+        date_in_sec = time_difference.total_seconds()
+
+        # Convert from seconds to YMDhm tuple
+        days_left    = int(date_in_sec / SEC_IN_DAY)
+        date_in_sec -= days_left * SEC_IN_DAY
+        hrs_left     = int(date_in_sec / SEC_IN_HOUR)
+        date_in_sec -= hrs_left * SEC_IN_HOUR
+        min_left     = int(date_in_sec / SEC_IN_MIN)
+        date_in_sec -= min_left * SEC_IN_MIN
+
+        time_left_str = str(str(abs(days_left)) +" | "+ 
+                            str(abs(hrs_left)).rjust(2, '0') +":"+ 
+                            str(abs(min_left)).rjust(2, '0') + "  ")
+
+        # Add minus sign if time is negative
+        if (date_in_sec < 0): time_left_str = "- " + time_left_str
+
+        # Set result to the label
+        timers[n].time_left.set(time_left_str)
+
+        # Change foreground color accordingly
+        # Red Overdue
+        if (date_in_sec < 0):
+            timers[n].widgets["time_tracker"].config(fg="red")
+        else:
+            # Yellow Almost
+            if (days_left == 0 and hrs_left < COLOR_SECTOR_CRIT):
+                timers[n].widgets["time_tracker"].config(fg="yellow")
+            # Blue Hurry up
+            elif (days_left == 0 and hrs_left < COLOR_SECTOR_LOW):
+                timers[n].widgets["time_tracker"].config(fg="blue")
+            # Black Having time
+            else: timers[n].widgets["time_tracker"].config(fg=BLACK)
 
 
 def save_data_file():
@@ -96,12 +135,25 @@ def save_data_file():
             + DFILE_DELIM + str(timers[n].widgets["date"].get_date())
             + DFILE_DELIM + timers[n].widgets["time_hrs"].get()
             + DFILE_DELIM + timers[n].widgets["time_min"].get() )
-        data_to_save.join(timer_data + "\n")
+        data_to_save += timer_data + "\n"
+        print(":::", data_to_save)
 
     # Save the aquired data to the file
     data_file = open(FILE_PATH, "wt")
     data_file.write(data_to_save)
     data_file.close()
+
+
+def callback_key_release(event):
+    if event.keysym == "Escape":  # NOTE:SHOULD BE COMMENTED OUT IN THE RELEASE VERSION!
+        print("Exiting...")
+        sys.exit()
+
+    if event.keysym=="F1": 
+        save_data_file()
+
+    if event.keysym=="F2":
+        calculate_deadline()
 
 
 #--------------------------------------------------
@@ -134,7 +186,8 @@ class Timer(tk.Frame):
 
         global timers_quantity        
         global timers
-
+        self.time_left = tk.StringVar()
+        self.time_left.set(TIME_LEFT_DEFAULT)
 
         # TIME(CLOCK) ENTRY INPUT VALIDATION
         def validate_input_hrs(new_text):
@@ -169,42 +222,46 @@ class Timer(tk.Frame):
         self.widgets = {
             # ----------------------------------------------------------------------
             "title":        tk.Entry(self, 
-                            bg=LGRAY, fg=BLACK, width=25, cursor="xterm", font=(font_1 + font_1_size), relief="flat"),
+                            bg=LGRAY, fg=BLACK, width=30, cursor="xterm", font=(font_1 + font_1_size), relief="ridge"),
             # ----------------------------------------------------------------------
             "btn_reset":    tk.Button(self, 
-                            text='ク', command=self.reset_timer, width=2,
-                            bg=RED, fg=BLACK, cursor="hand2", font=(font_2 + font_1_size + "bold")) ,
+                                      text='ク', command=self.reset_timer, width=2,
+                            bg=RED, fg=BLACK, cursor="hand2", font=(font_2 + font_1_size + "bold")),
             # ----------------------------------------------------------------------
             "date":         tkc.DateEntry(self, 
-                            mindate=dt.date.today(), date_pattern="dd.mm.yyyy", font=(font_1 + font_1_size)) ,
+                            date_pattern="dd.mm.yyyy", font=(font_1 + font_1_size)),
             # ----------------------------------------------------------------------
             "time_hrs":     tk.Entry(self,
-                            bg="white", fg=BLACK, width=2, cursor="xterm", font=(font_1 + font_1_size),
+                            bg="white", fg=BLACK, width=2, cursor="xterm",
+                            font=(font_1 + font_1_size),
                             validate="key",  # Validate on each key press
                             validatecommand=(validate_cmd_hrs, '%P')), # %P = new text
             # ----------------------------------------------------------------------
             "time_colon":   tk.Label(self,
-                            text=":", bg=GRAY, fg=BLACK, font=(font_1 + font_1_size)) ,
+                            text=":", bg=GRAY, fg=BLACK, font=(font_1 + font_1_size)),
             # ----------------------------------------------------------------------
             "time_min":     tk.Entry(self,
-                            bg="white", fg=BLACK, width=2, cursor="xterm", font=(font_1 + font_1_size),
+                            bg="white", fg=BLACK, width=2, cursor="xterm", 
+                            font=(font_1 + font_1_size),
                             validate="key",  # Validate on each key press
                             validatecommand=(validate_cmd_min, '%P')),  # %P = new text
             # ----------------------------------------------------------------------
             "time_tracker": tk.Label(self, 
-                            text="0000 | 00:00", bg=GRAY, fg=BLACK, font=(font_1 + font_1_size + "bold")) ,
+                            text="0000 | 00:00", bg=GRAY, fg=BLACK, width=10, anchor="ne",
+                            font=(font_1 + font_1_size + "bold"), textvariable=self.time_left,
+                            relief="groove") 
             # ----------------------------------------------------------------------
         }
 
 
         # PLACING THE WIDGETS
         self.widgets["title"].grid(row=0, column=0, padx=pdx+4, pady=pdy, columnspan=6, sticky='w')
-        self.widgets["btn_reset"].grid(row=0, column=7, padx=pdx+6, pady=pdy, columnspan=3)
-        self.widgets["date"].grid(row=1, column=0, padx=pdx)
-        self.widgets["time_hrs"].grid(row=1, column=1)
-        self.widgets["time_colon"].grid(row=1, column=2)
-        self.widgets["time_min"].grid(row=1, column=3)
-        self.widgets["time_tracker"].grid(row=1, column=4, padx=pdx, pady=pdy, columnspan=6)
+        self.widgets["btn_reset"].grid(row=0, column=7, padx=pdx+6, pady=pdy, columnspan=3, sticky='w')
+        self.widgets["date"].grid(row=1, column=0, padx=pdx, sticky='w')
+        self.widgets["time_hrs"].grid(row=1, column=1, sticky='w')
+        self.widgets["time_colon"].grid(row=1, column=2, sticky='w')
+        self.widgets["time_min"].grid(row=1, column=3, sticky='w')
+        self.widgets["time_tracker"].grid(row=1, column=4, padx=pdx, pady=pdy, columnspan=6, sticky='e')
 
         timers_quantity += 1
 
@@ -229,6 +286,6 @@ root.geometry(win_size.join("+500+500"))
 app.config(padx=5, pady=5, bg=DGRAY)
 # TODO: saving data every 1 minute to the file
 # key events
-root.bind("<KeyRelease>", handle_events)
+root.bind("<KeyRelease>", callback_key_release)
 
 app.mainloop()
