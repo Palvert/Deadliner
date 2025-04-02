@@ -3,6 +3,9 @@
 #       make validation for a timer title entry to make the character invalid
 # TODO: I close file each time. Do I even need it?
 # TODO: Understand the variable tracking
+# TODO: refactor to make normal tracking variables (StringVar and textvariable= ) 
+#       this also should fix the bug with empty time entry fields
+# TODO: fix the entries (hrs and min) position, they have too much space near themselves
 
 import tkinter as tk
 from tkinter import ttk
@@ -13,6 +16,7 @@ import re
 import datetime as dt
 from datetime import datetime
 import sys
+import os
 
 #--------------------------------------------------
 # VARIABLES AND CONSTANTS
@@ -60,13 +64,13 @@ loaded_data: list = []
 #--------------------------------------------------
 def load_data_file():
     global loaded_data
-    data_file = open(FILE_PATH, "rt")
 
-    # file safe-check
-    if (data_file): pass
-    else: data_file = open(FILE_PATH, "xt")
+    # Read the data file
+    if (os.path.exists(FILE_PATH)):
+        data_file = open(FILE_PATH, "rt")
+    else: return None
 
-    # load the file as 2D array(list)
+    # Load the file as 2D array(list)
     for line in data_file:
         loaded_data.append(line.split(DFILE_DELIM))
 
