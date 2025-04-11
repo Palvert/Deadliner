@@ -175,3 +175,5 @@ cython_debug/
 
 # Additional
 .dat
+build/
+dist/
