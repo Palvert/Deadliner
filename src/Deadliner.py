@@ -3,8 +3,6 @@
 #       (had some struggles with getting the correct windows size, becauses of the first problem)
 # TODO: when data will be loaded from the file, timers, that has a character which is used as delimiter will break the program
 #       make validation for a timer title entry to make the character invalid
-# TODO: fix the entries (hrs and min) position, they have too much space near themselves
-# TODO: make autosave when entry fields are changed
 
 import tkinter as tk
 from tkinter import ttk
