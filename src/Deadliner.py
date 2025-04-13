@@ -42,7 +42,8 @@ SEC_IN_MIN  = 60
 COLOR_SECTOR_LOW  = 24 # Less than (Hours)
 COLOR_SECTOR_CRIT = 1  # Less than (Hours)
 COLOR_SECTOR_OVER = 0  # Less than (Minutes)
-CALC_SAVE_DELAY = 60000 # ms
+CALC_DELAY = 60000 # ms
+CHECK_CHANGE_DELAY = 300 # ms
 
 # Style
 font_1, font_1_size = "Arial\ Nova", " 12 "
@@ -52,6 +53,7 @@ pdx, pdy = 3, 3
 date_selected = ""
 timers_quantity = 0
 timers = []
+prev_data = []
 
 # Read CLI user arugment
 timers_to_add = 3
@@ -106,7 +108,6 @@ def save_data_file():
 
 
 def calculate_deadline():
-    # time_left: str
     for n in range(len(timers)):
         if (timers[n].widgets["date"].get_date() and
             timers[n].hrs.get() and
@@ -150,9 +151,40 @@ def calculate_deadline():
                     timers[n].widgets["time_tracker"].config(fg="blue")
                 # Black Having time
                 else: timers[n].widgets["time_tracker"].config(fg=BLACK)
+        else:
+            timers[n].time_left.set(TIME_LEFT_DEFAULT)
+            timers[n].widgets["time_tracker"].config(fg=DGRAY)
 
-    save_data_file()
-    root.after(CALC_SAVE_DELAY, calculate_deadline)
+    # Save currient state of the entry fields to compare later when they are changed
+    global prev_data
+    prev_data = []
+    for i in range(len(timers)):
+        timer_data = []
+        timer_data.append(timers[i].title.get())
+        timer_data.append(timers[i].widgets["date"].get_date())
+        timer_data.append(timers[i].hrs.get())
+        timer_data.append(timers[i].min.get())
+
+        prev_data.append(timer_data)
+    # --------------------------------------------------
+
+    root.after(CALC_DELAY, calculate_deadline)
+
+
+def check_for_changes():
+    for i in range(len(timers)):
+        curr_data = []
+        curr_data.append(timers[i].title.get())
+        curr_data.append(timers[i].widgets["date"].get_date())
+        curr_data.append(timers[i].hrs.get())
+        curr_data.append(timers[i].min.get())
+
+        # An entry field was changed
+        if str(prev_data[i]) != str(curr_data):
+            calculate_deadline()
+            save_data_file()
+
+    root.after(CHECK_CHANGE_DELAY, check_for_changes)
 
 
 def callback_key_release(event):
@@ -163,8 +195,8 @@ def callback_key_release(event):
     # if event.keysym=="F1": 
     #     save_data_file()
     #
-    # if event.keysym=="F2":
-    #     calculate_deadline()
+    if event.keysym=="F2":
+        calculate_deadline()
 
 
 def on_closing():
@@ -326,4 +358,5 @@ root.protocol("WM_DELETE_WINDOW", on_closing)
 root.bind("<KeyRelease>", callback_key_release)
 
 calculate_deadline()
+check_for_changes()
 root.mainloop()
