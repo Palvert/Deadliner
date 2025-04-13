@@ -1,7 +1,7 @@
-# DeadLiner  
+# Deadliner  
 ![deadliner_gti_cover.png](./res/git_cover.png)  
-#### Deadliner is a simple program for tracking your deadlines. Made with Tkinter in Python.  
-<em>made for personal use</em>
+#### Deadliner is a simple program for tracking your deadlines.  
+#### Made with Tkinter in Python.   
 
 ## Tips:  
 Quantinty of time trackers can be changed by passing an argument. 3 by default. Up to 10.  
