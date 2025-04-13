@@ -20,7 +20,7 @@ import os
 # VARIABLES AND CONSTANTS
 #--------------------------------------------------
 
-#Color palette
+# Color palette
 BLACK   = "#0a0a0a"
 WHITE   = "#cccccc"
 RED     = "#f08080"
