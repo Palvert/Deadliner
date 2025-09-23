@@ -1,9 +1,3 @@
-# TODO: timers appear on by one - need to fix somehow
-# TODO: after fixing the problem of timers appearing one by one, make the window appears on the center of the screen
-#       (had some struggles with getting the correct windows size, becauses of the first problem)
-# TODO: when data will be loaded from the file, timers, that has a character which is used as delimiter will break the program
-#       make validation for a timer title entry to make the character invalid
-
 import tkinter as tk
 from tkinter import ttk
 from tkinter import messagebox
@@ -15,6 +9,7 @@ import datetime as dt
 from datetime import datetime
 import sys
 import os
+import math
 
 #--------------------------------------------------
 # VARIABLES AND CONSTANTS
@@ -30,7 +25,8 @@ LGRAY   = "#e3e3e3"
 GREEN   = "#94d692"
 TESTCLR = "#ff9900" # for debugging
 
-WIN_TITLE = "Deadliner"
+VERSION   = "v1.0"
+WIN_TITLE = f"Deadliner {VERSION}"
 FILE_PATH = "timers.dat"
 DFILE_DELIM = '-'
 TIME_LEFT_DEFAULT = "--- | -- : --  "
@@ -49,12 +45,11 @@ font_2, font_2_size = "Arial", " 9 "
 pdx, pdy = 3, 3
 
 date_selected = ""
-timers_quantity = 0
 timers = []
 prev_data = []
 
 # Read CLI user arugment
-timers_to_add = 3
+timers_to_add = 3 
 if len(sys.argv) > 1 and len(sys.argv) <= 10:
     timers_to_add = int(sys.argv[1])
 
@@ -187,14 +182,17 @@ def check_for_changes():
 
 def callback_key_release(event):
     pass
-    # if event.keysym == "Escape":  # NOTE:SHOULD BE COMMENTED OUT IN THE RELEASE VERSION!
-    #     sys.exit()
+    if event.keysym == "Escape":
+        calculate_deadline()
+        save_data_file()
+        sys.exit()
 
     # if event.keysym=="F1": 
     #     save_data_file()
     #
-    if event.keysym=="F2":
-        calculate_deadline()
+    # if event.keysym=="F2":
+    #     calculate_deadline()
+    #     print(root.winfo_height())
 
 
 def on_closing():
@@ -215,10 +213,12 @@ class Application(tk.Frame):
     def createWidgets(self):
         for n in range(timers_to_add):
             timers.append(Timer(self))
+
+        for n in range(timers_to_add):
             timers[n].grid()
 
             # Add an improvised separator
-            if timers_quantity != timers_to_add: # if not the bottom timer
+            if (n + 1) < timers_to_add: # if not the bottom timer
                 separator = tk.Frame(self, bg=DGRAY, height=4, width=200)
                 separator.grid()
 
@@ -230,7 +230,6 @@ class Timer(tk.Frame):
     def __init__(self, master=None):
         super().__init__(master, background=GRAY, padx=1, pady=1)
 
-        global timers_quantity        
         global timers
 
         # Class properties
@@ -241,7 +240,15 @@ class Timer(tk.Frame):
 
         self.time_left.set(TIME_LEFT_DEFAULT)
 
-        # TIME(CLOCK) ENTRY INPUT VALIDATION
+        # Validate timer title input (decline unallowed characters)
+        def validate_input_title(new_text):
+            if ('-' in new_text):
+                on_invalid_title()
+                return False
+            else: 
+                return True
+
+        # Time(clock) entry input validation
         def validate_input_hrs(new_text):
             if (not new_text or new_text.isdigit() and len(new_text) <= 2 
                 and 0 <= int(new_text) and int(new_text) <= 23):
@@ -258,8 +265,14 @@ class Timer(tk.Frame):
                 on_invalid_min()
                 return False
 
-        validate_cmd_hrs = root.register(validate_input_hrs) # Register the validation command
-        validate_cmd_min = root.register(validate_input_min) # Register the validation command
+        # Register the validation command
+        validate_cmd_title = root.register(validate_input_title)
+        validate_cmd_hrs = root.register(validate_input_hrs)
+        validate_cmd_min = root.register(validate_input_min)
+
+        def on_invalid_title():
+            self.widgets["title"].config(bg=RED)
+            root.after(1000, lambda: self.widgets["title"].config(bg=LGRAY))
 
         def on_invalid_hrs():
             self.widgets["time_hrs"].config(bg=RED)
@@ -276,6 +289,8 @@ class Timer(tk.Frame):
             "title":        tk.Entry(self, 
                             bg=LGRAY, fg=BLACK, width=30, cursor="xterm", 
                             font=(font_1 + font_1_size), relief="ridge",
+                            validate="key",  # Validate on each key press
+                            validatecommand=(validate_cmd_title, '%P'), # %P = new text
                             textvariable=self.title),
             # ----------------------------------------------------------------------
             "btn_reset":    tk.Button(self, 
@@ -321,15 +336,8 @@ class Timer(tk.Frame):
         self.widgets["time_min"].grid(row=1, column=3, sticky='w')
         self.widgets["time_tracker"].grid(row=1, column=4, padx=pdx, pady=pdy, columnspan=6, sticky='e')
 
-        timers_quantity += 1
-
     
     def reset_timer(self) -> None:
-        # self.widgets["title"].delete(0, tk.END)
-        # self.widgets["date"].set_date(dt.date.today())
-        # self.widgets["time_hrs"].delete(0, tk.END)
-        # self.widgets["time_min"].delete(0, tk.END)
-
         self.title.set("")
         self.widgets["date"].set_date(dt.date.today())
         self.hrs.set("")
@@ -345,12 +353,21 @@ class Timer(tk.Frame):
 root = tk.Tk()
 root.resizable(False, False)
 root.title(WIN_TITLE)
-root.iconbitmap("deadliner.ico")
+root.wm_iconbitmap(default=sys.executable)
 app = Application()
 app.config(padx=5, pady=5, bg=DGRAY)
 
-# Window closing event
-root.protocol("WM_DELETE_WINDOW", on_closing)
+# Initial window position on the screen
+screen_width = root.winfo_screenwidth()
+screen_height = root.winfo_screenheight()
+win_width = 348
+win_height = math.floor(77.6 * timers_to_add) #TODO: strange thing with height, so it's not perfect with every quantity of the timers
+x = (screen_width - win_width) // 2
+y = (screen_height - win_height) // 2
+root.geometry(f"{win_width}x{win_height}+{x}+{y}")
+
+# Dialog window confirming exit
+# root.protocol("WM_DELETE_WINDOW", on_closing)
 
 # Key press events
 root.bind("<KeyRelease>", callback_key_release)

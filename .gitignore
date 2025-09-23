@@ -177,4 +177,3 @@ cython_debug/
 timers.dat
 build/
 dist/
-devnotes.txt
