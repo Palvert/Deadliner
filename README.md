@@ -10,3 +10,6 @@ Argument can be conviniently specified in the properties of a .lnk file.
 
 ## Compile command:  
 `pyinstaller --clean --onefile --hidden-import=babel.numbers --windowed --icon res/Deadliner.ico src/Deadliner.py`   
+
+## Change log:
+v1.1 - Colors changed: inactive and active timers have different colors.

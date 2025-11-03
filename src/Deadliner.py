@@ -16,16 +16,21 @@ import math
 #--------------------------------------------------
 
 # Color palette
-BLACK   = "#0a0a0a"
-WHITE   = "#cccccc"
-RED     = "#f08080"
-DGRAY   = "#808080"
-GRAY    = "#b4b4b4"
-LGRAY   = "#e3e3e3"
-GREEN   = "#94d692"
-TESTCLR = "#ff9900" # for debugging
+BLACK      = "#0a0a0a"
+WHITE      = "#cccccc"
+RED        = "#f09090"
+RED_DIM    = "#ffaaaa"
+RED_DEEP   = "#ff0000"
+DGRAY      = "#808080"
+GRAY       = "#b4b4b4"
+LGRAY      = "#e3e3e3"
+GREEN      = "#94d692"
+YELLOW     = "#ffffaf"
+YELLOW_DIM = "#D6C092"
+BLUE       = "#0000ff"
+ORANGE     = "#ff9000"
 
-VERSION   = "v1.0"
+VERSION   = "v1.1"
 WIN_TITLE = f"Deadliner {VERSION}"
 FILE_PATH = "timers.dat"
 DFILE_DELIM = '-'
@@ -131,22 +136,35 @@ def calculate_deadline():
             # Set result to the label
             timers[n].time_left.set(time_left_str)
 
-            # Change foreground color accordingly
+            # Change timer's color according to activness and how much time left
+            timers[n].config(bg=GREEN)
+            timers[n].widgets["time_tracker"].config(bg=GREEN)
+            timers[n].widgets["time_colon"].config(bg=GREEN)
             # Red Overdue
             if (date_in_sec < 0):
-                timers[n].widgets["time_tracker"].config(fg="red")
+                timers[n].widgets["time_tracker"].config(fg=RED_DEEP)
+                timers[n].config(bg=RED_DIM)
+                timers[n].widgets["time_tracker"].config(bg=RED_DIM)
+                timers[n].widgets["time_colon"].config(bg=RED_DIM)
             else:
                 # Yellow Almost
                 if (days_left == 0 and hrs_left < COLOR_SECTOR_CRIT):
-                    timers[n].widgets["time_tracker"].config(fg="yellow")
+                    timers[n].widgets["time_tracker"].config(fg=YELLOW)
+                    timers[n].config(bg=YELLOW_DIM)
+                    timers[n].widgets["time_colon"].config(bg=YELLOW_DIM)
+                    timers[n].widgets["time_tracker"].config(bg=YELLOW_DIM)
                 # Blue Hurry up
                 elif (days_left == 0 and hrs_left < COLOR_SECTOR_LOW):
-                    timers[n].widgets["time_tracker"].config(fg="blue")
+                    timers[n].widgets["time_tracker"].config(fg=BLUE)
                 # Black Having time
                 else: timers[n].widgets["time_tracker"].config(fg=BLACK)
         else:
             timers[n].time_left.set(TIME_LEFT_DEFAULT)
             timers[n].widgets["time_tracker"].config(fg=DGRAY)
+            # Change timer's bg to indicate it's active (highlight)
+            timers[n].config(bg=GRAY)
+            timers[n].widgets["time_tracker"].config(bg=GRAY)
+            timers[n].widgets["time_colon"].config(bg=GRAY)
 
     # Save currient state of the entry fields to compare later when they are changed
     global prev_data
@@ -295,7 +313,7 @@ class Timer(tk.Frame):
             # ----------------------------------------------------------------------
             "btn_reset":    tk.Button(self, 
                             text='ク', command=self.reset_timer, width=2,
-                            bg=RED, fg=BLACK, cursor="hand2", 
+                            bg=LGRAY, fg=BLACK, cursor="hand2", 
                             font=(font_2 + font_1_size + "bold")),
             # ----------------------------------------------------------------------
             "date":         tkc.DateEntry(self, 
@@ -344,6 +362,10 @@ class Timer(tk.Frame):
         self.min.set("")
         self.time_left.set(TIME_LEFT_DEFAULT)
         self.widgets["time_tracker"].config(fg=DGRAY)
+        # Gray out
+        self.config(bg=GRAY)
+        self.widgets["time_tracker"].config(bg=GRAY)
+        self.widgets["time_colon"].config(bg=GRAY)
 
 
 #--------------------------------------------------
